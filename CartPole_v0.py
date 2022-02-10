@@ -1,3 +1,9 @@
+"""
+Initial practice with openAI gym
+Coded by Quoc Pham
+02/2022
+"""
+
 import gym
 
 env = gym.make('CartPoke-v0')
