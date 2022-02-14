@@ -27,7 +27,7 @@ ALPHA = 0.1 # Learning rate
 DISCOUNT = 0.9
 LAMBDA = 0.9 # For Eligibility trace
 BATCH = 32
-MEMORY = BATCH * 10
+MEMORY = BATCH * 15
 EPOCHS = 3
 display = True
 
@@ -200,10 +200,10 @@ for episode in range(EPISODES):
         replay_memory.appendleft((state, action, next_state, done, t))
 
         if len(replay_memory) > MEMORY: # To control size from exploding remove oldest memory
-            replay_memory.popright()
+            replay_memory.pop()
 
         if len(q_dict) > MEMORY: # To control size from exploding, randomly remove q values which also prevents overfitting
-            q_dict.pop(random.choise(q_dict.keys()))
+            q_dict.pop(random.choice(q_dict.keys()))
 
         if reward != 0: # If there's a reward, give credit to recent states based on eligibility traces
             propagate_delta(q_value, next_state, reward, t)
