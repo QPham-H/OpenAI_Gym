@@ -22,7 +22,7 @@ game = 'AirRaid-v0'
 # Constants and Variables
 EPISODES = 10
 STEPS = 1000
-EPSILON = 0.2
+EPSILON = 0.4
 ALPHA = 0.1 # Learning rate
 DISCOUNT = 0.9
 LAMBDA = 0.9 # For Eligibility trace
@@ -210,8 +210,8 @@ for episode in range(EPISODES):
             propagate_delta(q_value, next_state, reward, t)
             episode_reward += reward
 
-        if done:
-            print(f'End of episode {episode} at {t} time steps')
+        if done or t == (STEPS-1):
+            print(f'End of episode {episode} at {t+1} time steps')
             break
 
         state = next_state
