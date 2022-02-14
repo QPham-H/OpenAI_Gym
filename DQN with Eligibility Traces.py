@@ -16,20 +16,20 @@ from tensorflow.keras.models import Sequential, Model
 
 from collections import deque
 
-# Select OpenAI Gym Atari game to test NN on
-game = 'AirRaid-v0'
+# Select any OpenAI Gym Atari game to test NN on
+game = 'Centipede-v0'
 
 # Constants and Variables
 EPISODES = 10
 STEPS = 1000
-EPSILON = 0.4
+EPSILON = 0.3
 ALPHA = 0.1 # Learning rate
 DISCOUNT = 0.9
 LAMBDA = 0.9 # For Eligibility trace
 BATCH = 32
 MEMORY = BATCH * 15
 EPOCHS = 3
-display = True
+display = False
 
 # Begin creating the environment 
 env = gym.make(game) #, render_mode='human') # Using `render_mode` provides access to proper scaling, audio support, and proper framerates
@@ -52,7 +52,7 @@ x = Conv2D(8,3,activation='relu',padding='same')(x)
 x = MaxPooling2D(2)(x)
 x = Conv2D(16,3,activation='relu',padding='same')(x)
 x = MaxPooling2D(2)(x)
-x = Conv2D(8,3,activation='relu',padding='same')(x)
+x = Conv2D(32,3,activation='relu',padding='same')(x)
 x = MaxPooling2D(2)(x)
 #x = Conv2D(32,3,activation='relu',padding='same')(x)
 #x = MaxPooling2D(2)(x)
@@ -71,7 +71,7 @@ x = Dropout(0.3)(x)
 out = Dense(1,activation='linear')(x) 
 
 q_model = Model([input_layer,action_layer], out)
-print(q_model.summary())
+#print(q_model.summary())
 
 
 replay_memory = deque()
@@ -207,6 +207,7 @@ for episode in range(EPISODES):
             q_dict.pop(t-MEMORY) # Remove earliest values
 
         if reward != 0: # If there's a reward, give credit to recent states based on eligibility traces
+            print(f'Obtain {reward} reward')
             propagate_delta(q_value, next_state, reward, t)
             episode_reward += reward
 
