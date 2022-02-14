@@ -202,8 +202,9 @@ for episode in range(EPISODES):
         if len(replay_memory) > MEMORY: # To control size from exploding remove oldest memory
             replay_memory.pop()
 
-        if len(q_dict) > MEMORY: # To control size from exploding, randomly remove q values which also prevents overfitting
-            q_dict.pop(random.choice(q_dict.keys()))
+        if len(q_dict) > MEMORY: # To control size from exploding
+            #q_dict.pop(random.choice(list(q_dict))) # randomly remove q values which also prevents overfitting
+            q_dict.pop(t-MEMORY) # Remove earliest values
 
         if reward != 0: # If there's a reward, give credit to recent states based on eligibility traces
             propagate_delta(q_value, next_state, reward, t)
