@@ -28,7 +28,7 @@ DISCOUNT = 0.9
 LAMBDA = 0.9 # For Eligibility trace
 BATCH = 32
 MEMORY = BATCH * 10
-EPOCHS = 1
+EPOCHS = 10
 display = True
 
 # Begin creating the environment 
@@ -99,7 +99,7 @@ def action_selection(state):
         
     return action, q_values[action]
 
-def propagate_delta(curr_q_value, next_state, reward, t):
+def propagate_delta(curr_q_value, next_state, reward, curr_time):
     next_state = np.expand_dims(next_state,axis=0)
 
     next_q_values = np.zeros(action_space)
@@ -117,36 +117,51 @@ def propagate_delta(curr_q_value, next_state, reward, t):
     # Propagate only until traces decay significantly enough
     
     for i in range(len(replay_memory)):
-        n = t - replay_memory[i][5] # where n is the time steps away from current time
+        mem_time = replay_memory[i][4]
+        n = curr_time - mem_time # where n is the time steps away from current time
         z = (LAMBDA * DISCOUNT) ** n
         
         if z <= 0.1:
             break
 
-        replay_memory[i][2] += ALPHA * delta * z
+        q_dict[mem_time] += ALPHA * delta * z # Add onto existing to sum up over overlapping traces
     
 
 def train_model():
-    sessions = floor(len(replay_memory)/BATCH)
+    sessions = len(replay_memory)//BATCH
 
-    model.compile(
+    q_model.compile(
     loss='mse',
     optimizer='adam'
     )
 
-    one_hot_actions = np.zeros(BATCH, action_space)
+    one_hot_actions = np.zeros((BATCH, action_space))
     for n in range(sessions):
         batch = random.sample(replay_memory, BATCH)
 
         states = [data[0] for data in batch]
+        states = np.asarray(states)
+        
         actions = [data[1] for data in batch]
         one_hot_actions[np.arange(BATCH),actions] = 1
-        print('This is one_hot_actions')
-        print(one_hot_actions)
-        q_values = [data[2] for data in batch]
 
-        history = model.fit(
-            [states, actions],
+        #print(f'This is one_hot_actions: {one_hot_actions}')
+        
+        time = [data[4] for data in batch]
+        q_values = [q_dict[idx] for idx in time]
+        q_values = np.asarray(q_values)
+
+##        print(f'States type: {type(states)}')
+##        print(f'One Hot Actions type: {type(one_hot_actions)}')
+##        print(f'q_values type:{type(q_values)}')
+        
+##        for idx in range(BATCH):
+##            flatten_state = np.reshape(states[idx], img_ht*img_wd*3)
+##            state_action = np.concatenate([flatten_state, actions[idx]])
+##            q_values.append(q_dict[state_action])
+
+        history = q_model.fit(
+            [states, one_hot_actions],
             q_values,
             batch_size = BATCH,
             epochs = EPOCHS
@@ -166,10 +181,26 @@ for episode in range(EPISODES):
         action, q_value = action_selection(state)
         next_state, reward, done, info = env.step(action)
 
-        replay_memory.appendleft((state, action, q_value, next_state, done, t))
+        # Create a hashable key for q value dictionary based on state and action to be used across episodes
+        #flatten_state = np.reshape(state, img_ht*img_wd*3)
+        #print(f'Flat state shape: {flatten_state.shape}')
 
-        if len(replay_memory) > MEMORY: # To control memory size from exploding
+        #action = np.expand_dims(action,axis=0)
+        #print(f'Action: {action}')
+        #print(f'action shape: {action.shape}')
+        #state_action = np.concatenate([flatten_state, action])
+        #state_action = int(str(flatten_state)+str(action))
+
+        episode_time = STEPS * EPISODES + t
+
+        q_dict[episode_time] = q_value # Over episodes the neural network will have been trained and successively return q-values closer and closer to the optimal
+        replay_memory.appendleft((state, action, next_state, done, episode_time))
+
+        if len(replay_memory) > MEMORY: # To control size from exploding remove oldest memory
             replay_memory.popright()
+
+        if len(q_dict) > MEMORY: # To control size from exploding, randomly remove q values which also prevents overfitting
+            q_dict.pop(random.choise(q_dict.keys()))
 
         if reward != 0: # If there's a reward, give credit to recent states based on eligibility traces
             propagate_delta(q_value, next_state, reward, t)
