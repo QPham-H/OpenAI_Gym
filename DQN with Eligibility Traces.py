@@ -21,14 +21,14 @@ game = 'AirRaid-v0'
 
 # Constants and Variables
 EPISODES = 10
-STEPS = 100
+STEPS = 1000
 EPSILON = 0.2
 ALPHA = 0.1 # Learning rate
 DISCOUNT = 0.9
 LAMBDA = 0.9 # For Eligibility trace
 BATCH = 32
 MEMORY = BATCH * 10
-EPOCHS = 10
+EPOCHS = 3
 display = True
 
 # Begin creating the environment 
@@ -167,9 +167,12 @@ def train_model():
             epochs = EPOCHS
             )
 
-
+total_reward = 0
 for episode in range(EPISODES):
-    print(f'Start Episode {episode}')
+    q_dict.clear() # Have to clear memory so we dont train on old q-values
+    replay_memory.clear() # Can only use memory per episode in this eligibility trace algorithm
+    
+    print(f'Start Episode: {episode}')
     done = False
     state = env.reset() # Returns an observation (RGB image)
 
@@ -191,10 +194,10 @@ for episode in range(EPISODES):
         #state_action = np.concatenate([flatten_state, action])
         #state_action = int(str(flatten_state)+str(action))
 
-        episode_time = STEPS * EPISODES + t
+        #episode_time = STEPS * EPISODES + t
 
-        q_dict[episode_time] = q_value # Over episodes the neural network will have been trained and successively return q-values closer and closer to the optimal
-        replay_memory.appendleft((state, action, next_state, done, episode_time))
+        q_dict[t] = q_value # Over episodes the neural network will have been trained and successively return q-values closer and closer to the optimal
+        replay_memory.appendleft((state, action, next_state, done, t))
 
         if len(replay_memory) > MEMORY: # To control size from exploding remove oldest memory
             replay_memory.popright()
@@ -211,9 +214,15 @@ for episode in range(EPISODES):
             break
 
         state = next_state
+
+    # Only reinforce weights when we've successfully played correctly
+    if episode_reward > 0:
+        train_model() # Update model between successive episodes
         
-    train_model() # Update model between successive episodes
     print(f'Reward for Episode {episode}: {episode_reward}')
+
+    total_reward += episode_reward
+    print(f'Total rewards so far: {total_reward}')
     
 
 env.close()
